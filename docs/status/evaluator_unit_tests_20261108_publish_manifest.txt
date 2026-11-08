@@ -3,8 +3,10 @@
 # Excluded: credentials, raw data, arrays, lossless audio, model weights, checkpoints, and source-resolution datasets.
 docs/tasks/2026-11-08_evaluator_unit_tests.md
 docs/tasks/2026-11-08_evaluator_unit_tests_v2.md
+docs/tasks/2026-11-08_evaluator_unit_tests_v2_1_T6.md
 docs/status/evaluator_unit_tests_20261108.md
 docs/status/evaluator_unit_tests_20261108_summary_v2_pilot.json
+docs/status/evaluator_unit_tests_20261108_summary_v21_final.json
 scripts/evaluator_unit_tests/__init__.py
 scripts/evaluator_unit_tests/analyze.py
 scripts/evaluator_unit_tests/config.json

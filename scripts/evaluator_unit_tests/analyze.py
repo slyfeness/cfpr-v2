@@ -247,6 +247,21 @@ def t5(samples, windows):
     return rows, {'pooled_window_auc_correct_vs_wrong':auc_rank(np.asarray(pooled_correct),np.asarray(pooled_wrong))}
 
 
+def t6_left_overlap_mask(occlusion_boxes, left_boxes, applied_frames):
+    """Strict positive-area overlap for v2.1; NaN expected left boxes are excluded."""
+    left_boxes=np.asarray(left_boxes, float)
+    mask=np.zeros(len(left_boxes), dtype=bool)
+    for frame in applied_frames:
+        box=occlusion_boxes.get(str(int(frame)))
+        left=left_boxes[int(frame)]
+        if box is None or not np.isfinite(left).all():
+            continue
+        x0=max(float(box[0]), float(left[0])); y0=max(float(box[1]), float(left[1]))
+        x1=min(float(box[2]), float(left[2])); y1=min(float(box[3]), float(left[3]))
+        mask[int(frame)]=(x1-x0)>0 and (y1-y0)>0
+    return mask
+
+
 def t6(samples, windows):
     rows=[]
     for sample in samples:
@@ -261,11 +276,26 @@ def t6(samples, windows):
             vis_right_exterior_delta=finite_mean(edited['vis_right'][outside])-finite_mean(clean['vis_right'][outside])
             missing_right=ratio(edited['missing_right'][inside])
             old_fraction_delta=finite_mean(edited_legacy[inside])-finite_mean(clean_legacy[inside])
-            passed=(np.isfinite(vis_right_delta) and vis_right_delta<=-.30) or (np.isfinite(missing_right) and missing_right>=.80)
-            passed=bool(passed and np.isfinite(vis_left_delta) and abs(vis_left_delta)<=.10 and np.isfinite(vis_right_exterior_delta) and abs(vis_right_exterior_delta)<=.05)
+            right_ok=(np.isfinite(vis_right_delta) and vis_right_delta<=-.30) or (np.isfinite(missing_right) and missing_right>=.80)
+            exterior_ok=np.isfinite(vis_right_exterior_delta) and abs(vis_right_exterior_delta)<=.05
+            v2_passed=bool(right_ok and np.isfinite(vis_left_delta) and abs(vis_left_delta)<=.10 and exterior_ok)
+            meta_path=OUT/'T6'/sample/window/'right_hand_gray'/'edit_meta.json'
+            expected_path=OUT/'clean'/sample/'expected_hands.npz'
+            if meta_path.exists() and expected_path.exists():
+                meta=load_json(meta_path)['edit']; left_boxes=np.load(expected_path)['left_box']
+                applied=np.asarray(meta['applied_frames'],int); overlap=t6_left_overlap_mask(meta['boxes'],left_boxes,applied)
+                eligible=np.zeros(240,bool); eligible[applied]=True; eligible &= np.isfinite(left_boxes).all(axis=1) & ~overlap
+                usable=int(eligible.sum()); left_v21_delta=finite_mean(edited['vis_left'][eligible])-finite_mean(clean['vis_left'][eligible])
+                left_status='undetermined' if usable<12 else ('passed' if np.isfinite(left_v21_delta) and abs(left_v21_delta)<=.10 else 'failed')
+                v21_passed=bool(right_ok and exterior_ok and (left_status in ('passed','undetermined'))); overlap_count=int(overlap.sum()); applied_count=int(len(applied))
+            else:
+                applied_count=overlap_count=usable=0; left_v21_delta=float('nan'); left_status='unavailable_fixture'; v21_passed=False
             rows.append({'sample':sample,'window':window,'vis_right_window_delta':vis_right_delta,
                 'missing_right_window_fraction':missing_right,'vis_left_window_delta':vis_left_delta,
-                'vis_right_exterior_delta':vis_right_exterior_delta,'legacy_visible_joint_fraction_window_delta':old_fraction_delta,'passed':passed})
+                'vis_right_exterior_delta':vis_right_exterior_delta,'legacy_visible_joint_fraction_window_delta':old_fraction_delta,
+                'v2_passed':v2_passed,'v21_applied_frames':applied_count,'v21_overlap_frames':overlap_count,
+                'v21_left_eligible_frames':usable,'v21_vis_left_delta_nonoverlap':left_v21_delta,
+                'v21_left_check':left_status,'v21_passed':v21_passed,'passed':v2_passed})
     return rows
 
 
@@ -298,10 +328,10 @@ def main():
         'T4a':v2_decision(result['T4'],samples,field='t4a_passed'),
         'T4b':v2_decision(result['T4'],samples,field='t4b_passed'),
         'T4c':v2_decision(result['T4'],samples,field='t4c_passed'),
-        'T5':v2_decision(result['T5'],samples), 'T6':v2_decision(result['T6'],samples)}
+        'T5':v2_decision(result['T5'],samples), 'T6_v2':v2_decision(result['T6'],samples,field='v2_passed'), 'T6_v21':v2_decision(result['T6'],samples,field='v21_passed')}
     path=Path(args.output)
     if path.exists(): raise FileExistsError(f'refusing to overwrite analysis output: {path}')
-    path.parent.mkdir(parents=True,exist_ok=True); path.write_text(json.dumps(result,indent=2,ensure_ascii=False,allow_nan=True))
+    path.parent.mkdir(parents=True,exist_ok=True); path.write_text(json.dumps(result,indent=2,ensure_ascii=False,allow_nan=True,default=lambda x: bool(x) if isinstance(x,np.bool_) else float(x) if isinstance(x,np.floating) else int(x) if isinstance(x,np.integer) else str(x)))
 
 
 if __name__=='__main__':

@@ -82,3 +82,11 @@ def test_v2_decision_excludes_seen_pilot_and_requires_six_of_other_seven():
     assert decision["other_seven_passed_people"] == 6
     assert decision["overall_passed"] is True
     assert decision["pilot_sample"] == "CRB100_001"
+
+
+def test_t6_v21_overlap_geometry_is_strict_and_nan_safe():
+    from scripts.evaluator_unit_tests.analyze import t6_left_overlap_mask
+    occlusion = {"0": [0, 0, 4, 4], "1": [0, 0, 4, 4], "2": [0, 0, 4, 4], "3": [0, 0, 4, 4]}
+    left = np.asarray([[0, 0, 4, 4], [3, 3, 5, 5], [4, 0, 6, 4], [np.nan]*4], float)
+    applied = [0, 1, 2, 3]
+    np.testing.assert_array_equal(t6_left_overlap_mask(occlusion, left, applied), [True, True, False, False])

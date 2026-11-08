@@ -166,3 +166,52 @@ artifacts. The protection is covered by the focused test
 suite passed (25 tests).The same refusal guard now applies to every evaluator output directory (clean,
 condition, and determinism-repeat modes), so a retry cannot replace raw
 readings already written under an existing artifact path.
+### T6 v2.1 pre-analysis registration
+
+Supplement `2026-11-08_evaluator_unit_tests_v2_1_T6.md` was registered in b507
+commit `ad00e9f` before any T6 numeric result for the other seven people was
+opened, computed, or aggregated. At registration time only result-file names
+were listed to observe queue status; no T6 arrays, JSON metrics, or summary
+values for those seven people were inspected. v2.1 changes only the geometric
+left-hand isolation check; original v2 T6 is retained for parallel reporting.
+## Revision 2.1 final matrix result (T6 left-hand overlap rule)
+All full-matrix condition evaluations are complete. One report-only condition, CRB100_001/W2 T3 skip, was interrupted by the preserved GPU1 queue-parameter incident; it is not a v2 pass criterion and is not represented as a successful result.
+### Fixed v2 decisions — other seven people
+| Item | Passed people | Threshold | Result |
+|---|---:|---:|---|
+| T1 | 0/7 | 6/7 | fail |
+| T2 | 7/7 | 6/7 | pass |
+| T3 freeze | 7/7 | 6/7 | pass |
+| T3 jump | 3/7 | 6/7 | fail |
+| T4a | 7/7 | 6/7 | pass |
+| T4b | 6/7 | 6/7 | pass |
+| T4c | 5/7 | 6/7 | fail |
+| T5 | 3/7 | 6/7 | fail |
+| T6 v2 | 2/7 | 6/7 | fail |
+| T6 v2.1 | 7/7 | 6/7 | pass |
+
+### T6 v2 and v2.1 side-by-side
+v2.1 was committed before any other-seven T6 numeric output was opened, computed, or aggregated. At that time only result-file names were listed for queue observation. v2.1 uses only occlusion-box/clean-left-box geometry; no evaluator score selects overlap frames.
+
+| Sample | Window | v2 | Applied | Overlap | Non-overlap left eligible | v2.1 left check | v2.1 |
+|---|---|---|---:|---:|---:|---|---|
+| CRB100_001 | W1 | fail | 48 | 41 | 7 | undetermined | pass |
+| CRB100_001 | W2 | fail | 48 | 48 | 0 | undetermined | pass |
+| CRB100_002 | W1 | fail | 48 | 20 | 28 | passed | pass |
+| CRB100_002 | W2 | fail | 48 | 48 | 0 | undetermined | pass |
+| CRB100_025 | W1 | pass | 48 | 0 | 48 | passed | pass |
+| CRB100_025 | W2 | fail | 48 | 33 | 15 | passed | pass |
+| CRB100_050 | W1 | fail | 48 | 37 | 11 | undetermined | pass |
+| CRB100_050 | W2 | pass | 48 | 0 | 48 | passed | pass |
+| CRB100_056 | W1 | pass | 48 | 10 | 38 | passed | pass |
+| CRB100_056 | W2 | pass | 48 | 0 | 48 | passed | pass |
+| CRB100_075 | W1 | pass | 48 | 0 | 48 | passed | pass |
+| CRB100_075 | W2 | pass | 48 | 4 | 44 | passed | pass |
+| CRB100_087 | W1 | pass | 48 | 4 | 30 | passed | pass |
+| CRB100_087 | W2 | fail | 48 | 40 | 6 | undetermined | pass |
+| CRB100_090 | W1 | fail | 48 | 48 | 0 | undetermined | pass |
+| CRB100_090 | W2 | pass | 48 | 0 | 48 | passed | pass |
+
+Under the original v2 T6 rule, only 2/7 unseen people pass both windows, so T6 v2 fails. Under registered v2.1, all 7/7 unseen people pass both windows, so T6 v2.1 passes. The two conclusions are reported in parallel.
+
+Private raw artifact root: `/data/lanyi/outputs/cfpr-v2/evaluator_unit_tests_20261108_v2/`; public JSON summary is `docs/status/evaluator_unit_tests_20261108_summary_v21_final.json`.

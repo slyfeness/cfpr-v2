@@ -154,3 +154,13 @@ every MP4 is below 3 MB, every PNG is below 500 KB, and their total is
 6,391,621 bytes. The assets contain the approved public preview frames only;
 no arrays, audio, checkpoints, raw datasets, credentials, or full-resolution
 source material are included.
+### Output immutability guard before full matrix
+
+Before expanding to W2 and the remaining seven people, preparation was hardened
+so that a registered condition directory is created exactly once. `--window`
+now selects an explicit registered subset, and any pre-existing condition
+directory raises `FileExistsError` instead of being reused or overwritten.
+This permits CRB100_001 W2 to be prepared without touching its completed W1
+artifacts. The protection is covered by the focused test
+`test_prepare_window_selection_and_fresh_directory_guard`; the full focused
+suite passed (25 tests).

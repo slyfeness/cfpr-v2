@@ -147,3 +147,16 @@ def test_expected_boxes_from_dwpose_preserves_dwp_pose_left_then_right_semantics
     np.testing.assert_allclose(right[0], [58, 38, 72, 52])
     assert np.isnan(left[1]).all()
     assert np.isnan(right[1]).all()
+
+
+def test_prepare_window_selection_and_fresh_directory_guard(tmp_path):
+    from scripts.evaluator_unit_tests.run_tests import fresh_dir, selected_windows
+    cfg = {"windows": {"W1": [96, 144], "W2": [168, 216]}}
+    assert selected_windows(cfg, ["W2"]) == {"W2": [168, 216]}
+    with pytest.raises(ValueError, match="unregistered"):
+        selected_windows(cfg, ["W9"])
+    created = tmp_path / "new_condition"
+    fresh_dir(created)
+    assert created.is_dir()
+    with pytest.raises(FileExistsError, match="refusing to overwrite"):
+        fresh_dir(created)

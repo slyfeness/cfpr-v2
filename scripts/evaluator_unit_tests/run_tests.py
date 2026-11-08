@@ -125,7 +125,27 @@ def target_spec(labels,cfg):
     names=cfg['emotion']['evaluator_class_order']; step=cfg['emotion']['segment_seconds']
     return {'segments':[{'start':i*step,'end':(i+1)*step,'label':names[int(v)]} for i,v in enumerate(labels) if v >= 0]}
 
-def prepare_sample(sample,cfg,only_t6=False):
+def selected_windows(cfg, requested=None):
+    """Return registered windows, optionally a validated nonempty subset."""
+    registered = cfg['windows']
+    if requested is None:
+        return registered
+    unknown = [name for name in requested if name not in registered]
+    if unknown:
+        raise ValueError(f'unregistered window(s): {unknown}')
+    if len(set(requested)) != len(requested):
+        raise ValueError(f'duplicate window selection: {requested}')
+    return {name: registered[name] for name in requested}
+
+
+def fresh_dir(path):
+    """Create an artifact directory once; never overwrite an existing output."""
+    if path.exists():
+        raise FileExistsError(f'refusing to overwrite existing output directory: {path}')
+    path.mkdir(parents=True)
+    return path
+
+def prepare_sample(sample,cfg,only_t6=False, windows=None):
     clean_path=decode_once(sample,OUT/'clean'/sample/'clean.npy',cfg); clean=np.load(clean_path)
     audio=clean_audio(sample,cfg); order=cfg['samples']; donor=order[(order.index(sample)+1)%len(order)]
     labels,indices,valid=extract_emotion(sample,cfg); donor_labels, _,donor_valid=extract_emotion(donor,cfg)
@@ -134,32 +154,32 @@ def prepare_sample(sample,cfg,only_t6=False):
     for i in range(20):
         if valid[i] and donor_valid[i] and donor_labels[i] != labels[i]: replacement[i]=donor_labels[i]
         elif valid[i] and next2_valid[i] and next2_labels[i] != labels[i]: replacement[i]=next2_labels[i]
-    for w,(a,b) in cfg['windows'].items():
+    for w,(a,b) in selected_windows(cfg, windows).items():
         base=lambda test,level: OUT/test/sample/w/level
         if not only_t6:
             for k in cfg['t1_shifts_24fps']:
-                p=base('T1',f'k_{k:+d}'); p.mkdir(parents=True,exist_ok=True); shift=round(k*cfg['audio_sample_rate']/cfg['fps'])
+                p=base('T1',f'k_{k:+d}'); fresh_dir(p); shift=round(k*cfg['audio_sample_rate']/cfg['fps'])
                 changed,meta=shift_audio_window(audio,round(a*cfg['audio_sample_rate']/cfg['fps']),round(b*cfg['audio_sample_rate']/cfg['fps']),shift)
                 wavfile.write(p/'audio.wav',cfg['audio_sample_rate'],changed)
                 sample_a,sample_b=round(a*cfg['audio_sample_rate']/cfg['fps']),round(b*cfg['audio_sample_rate']/cfg['fps'])
                 dump({'edit':meta,'frame_source':str(clean_path),'audio_exterior_unchanged':bool(np.array_equal(audio[:sample_a],changed[:sample_a]) and np.array_equal(audio[sample_b:],changed[sample_b:])),'audio_shift_xcorr':verify_audio_shift_xcorr(audio,changed,sample_a,sample_b,shift)},p/'edit_meta.json')
-            donor_frames=np.load(decode_once(donor,OUT/'clean'/donor/'clean.npy',cfg)); x,m=replace_window(clean,donor_frames,a,b);p=base('T2','swap_next');p.mkdir(parents=True,exist_ok=True);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,range(a,b),{'donor_sample':donor})
+            donor_frames=np.load(decode_once(donor,OUT/'clean'/donor/'clean.npy',cfg)); x,m=replace_window(clean,donor_frames,a,b);p=base('T2','swap_next');fresh_dir(p);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,range(a,b),{'donor_sample':donor})
             for name,fun,expect in [('freeze',lambda:freeze_window(clean,a,cfg['t3']['freeze_frames']),range(a+1,a+cfg['t3']['freeze_frames'])),('skip',lambda:skip_forward_window(clean,a,b,cfg['t3']['skip_frames']),range(a,b)),('jump',lambda:jump_frame(clean,a,cfg['t3']['jump_frames']),[a])]:
-                x,m=fun();p=base('T3',name);p.mkdir(parents=True,exist_ok=True);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,expect)
+                x,m=fun();p=base('T3',name);fresh_dir(p);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,expect)
             for e in cfg['t4_flicker_ev']:
-                x,m=apply_flicker_ev(clean,a,b,e);p=base('T4',f'ev_{e:g}');p.mkdir(parents=True,exist_ok=True);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,range(a,b))
-            x,m=hard_cut_window(clean,a,b,cfg['t4_hard_cut_offset']);p=base('T4','hard_cut');p.mkdir(parents=True,exist_ok=True);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,range(a,b))
+                x,m=apply_flicker_ev(clean,a,b,e);p=base('T4',f'ev_{e:g}');fresh_dir(p);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,range(a,b))
+            x,m=hard_cut_window(clean,a,b,cfg['t4_hard_cut_offset']);p=base('T4','hard_cut');fresh_dir(p);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,range(a,b))
             for e in cfg['t4_single_frame_ev']:
-                x,m=apply_single_frame_exposure_ev(clean,a,e);p=base('T4',f'instant_ev_{e:g}');p.mkdir(parents=True,exist_ok=True);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,[a])
+                x,m=apply_single_frame_exposure_ev(clean,a,e);p=base('T4',f'instant_ev_{e:g}');fresh_dir(p);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,[a])
             wrong=labels.copy()
             segment_start,segment_end=a//12,b//12
             eligible=np.arange(segment_start,segment_end)[replacement[segment_start:segment_end]>=0]
             wrong[eligible]=replacement[eligible]
             for kind,lab in [('correct',labels),('wrong',wrong)]:
-                p=base('T5',kind);p.mkdir(parents=True,exist_ok=True);dump(target_spec(lab,cfg),p/'target.json');dump({'edit':{'kind':'emotion_target_only','window':[a,b],'source_indices_30fps':indices.tolist(),'label_source':'Imitator automatic movement:emotion_scores','valid_segment_fraction':float(np.mean(lab>=0)),'wrong_target_replaced_segments':list(range(segment_start,segment_end)) if kind=='wrong' else []},'actual_changed_frames':[],'expected_changed_frames':[]},p/'edit_meta.json')
+                p=base('T5',kind);fresh_dir(p);dump(target_spec(lab,cfg),p/'target.json');dump({'edit':{'kind':'emotion_target_only','window':[a,b],'source_indices_30fps':indices.tolist(),'label_source':'Imitator automatic movement:emotion_scores','valid_segment_fraction':float(np.mean(lab>=0)),'wrong_target_replaced_segments':list(range(segment_start,segment_end)) if kind=='wrong' else []},'actual_changed_frames':[],'expected_changed_frames':[]},p/'edit_meta.json')
         dw=OUT/'clean'/sample/'evaluators'/'dwpose.npz'
         if dw.exists():
-            z=np.load(dw); x,m=occlude_right_hand(clean,z['hands'],z['hands_score'],a,b,right_hand_index=cfg['t6']['right_hand_index'],margin=cfg['t6']['margin']);p=base('T6','right_hand_gray');p.mkdir(parents=True,exist_ok=True);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,m['applied_frames'],{'skipped_frames':m['skipped_frames']})
+            z=np.load(dw); x,m=occlude_right_hand(clean,z['hands'],z['hands_score'],a,b,right_hand_index=cfg['t6']['right_hand_index'],margin=cfg['t6']['margin']);p=base('T6','right_hand_gray');fresh_dir(p);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,m['applied_frames'],{'skipped_frames':m['skipped_frames']})
 
 def gpu_guard(gpu, peak_mib):
     if str(gpu) == '3': raise ValueError('GPU 3 is permanently prohibited')
@@ -246,7 +266,7 @@ def evaluate_clean_repeat(sample, tag, gpu):
     dump({'sample':sample,'mode':'clean_determinism_repeat','tag':tag,'frame_source':str(clean),'audio_source':str(inp/'audio.wav'),'target_source':str(target),'gpu_preflight':guard,'wall_clock_seconds':timing},out/'run_meta.json')
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--config',default=str(ROOT/'scripts/evaluator_unit_tests/config.json'));ap.add_argument('--sample',action='append');ap.add_argument('--only-t6',action='store_true');ap.add_argument('--evaluate',nargs=4,metavar=('TEST','WINDOW','LEVEL','GPU'));ap.add_argument('--evaluate-clean',metavar='GPU');ap.add_argument('--validate-t1-audio',nargs=2,metavar=('WINDOW','LEVEL'));ap.add_argument('--clean-repeat',nargs=2,metavar=('TAG','GPU'));a=ap.parse_args();cfg=json.loads(Path(a.config).read_text())
+    ap=argparse.ArgumentParser();ap.add_argument('--config',default=str(ROOT/'scripts/evaluator_unit_tests/config.json'));ap.add_argument('--sample',action='append');ap.add_argument('--window',action='append', help='prepare only this registered window; refuses existing condition directories');ap.add_argument('--only-t6',action='store_true');ap.add_argument('--evaluate',nargs=4,metavar=('TEST','WINDOW','LEVEL','GPU'));ap.add_argument('--evaluate-clean',metavar='GPU');ap.add_argument('--validate-t1-audio',nargs=2,metavar=('WINDOW','LEVEL'));ap.add_argument('--clean-repeat',nargs=2,metavar=('TAG','GPU'));a=ap.parse_args();cfg=json.loads(Path(a.config).read_text())
     if a.validate_t1_audio:
         if not a.sample or len(a.sample)!=1: raise ValueError('--validate-t1-audio needs exactly one --sample')
         validate_existing_t1_audio(a.sample[0],*a.validate_t1_audio,cfg); return
@@ -259,6 +279,6 @@ def main():
     if a.evaluate:
         if not a.sample or len(a.sample)!=1: raise ValueError('--evaluate needs exactly one --sample')
         evaluate(a.sample[0],*a.evaluate); return
-    for s in (a.sample or cfg['samples']):prepare_sample(s,cfg,a.only_t6)
+    for s in (a.sample or cfg['samples']):prepare_sample(s,cfg,a.only_t6,a.window)
 
 if __name__=='__main__':main()

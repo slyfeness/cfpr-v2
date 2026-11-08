@@ -154,15 +154,24 @@ def shift_audio_window(audio: np.ndarray, start: int, end: int, shift_samples: i
     _window(len(audio), start, end)
     if shift_samples == 0 or abs(shift_samples) >= end - start:
         raise ValueError("shift must be nonzero and smaller than the window")
+    source_start, source_end = start - int(shift_samples), end - int(shift_samples)
+    if source_start < 0 or source_end > len(audio):
+        raise ValueError("registered audio window has no adjacent real-audio source for this shift")
     out = audio.copy()
-    n = abs(int(shift_samples))
-    if shift_samples > 0:
-        out[start:start + n] = 0
-        out[start + n:end] = audio[start:end - n]
-    else:
-        out[end - n:end] = 0
-        out[start:end - n] = audio[start + n:end]
-    return out, {"kind": "audio_shift", "sample_window": [start, end], "shift_samples": int(shift_samples)}
+    out[start:end] = audio[source_start:source_end]
+    return out, {"kind": "audio_shift", "sample_window": [start, end], "shift_samples": int(shift_samples),
+                 "fill_policy": "adjacent_real_audio"}
+
+
+def apply_single_frame_exposure_ev(clean: np.ndarray, frame: int, ev: float):
+    _window(len(clean), frame, frame + 1)
+    if ev <= 0:
+        raise ValueError("EV must be positive")
+    out = clean.copy()
+    scaled = _srgb_to_linear(clean[frame]) * (2 ** float(ev))
+    out[frame] = _linear_to_srgb(scaled)
+    return out, {"kind": "single_frame_exposure", "frame": int(frame), "ev": float(ev),
+                 "clipped_fraction": float(np.mean((scaled < 0) | (scaled > 1)))}
 
 
 def verify_audio_shift_xcorr(original: np.ndarray, shifted: np.ndarray, start: int, end: int,

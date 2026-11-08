@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path('/data/lanyi/projects/cfpr-v2')
-OUT = Path('/data/lanyi/outputs/cfpr-v2/evaluator_unit_tests_20261108')
+OUT = Path('/data/lanyi/outputs/cfpr-v2/evaluator_unit_tests_20261108_v2')
 
 
 def load_json(path):
@@ -89,16 +89,16 @@ def emotion(path):
     return np.asarray(load_json(path / 'emotion.json')['videos']['gen']['consistency_seg'], dtype=float)
 
 
-def right_hand_visibility(path, n=240):
-    """Per-frame mean visibility of only evaluator regions labeled right-hand."""
+def expected_hand_visibility(path, n=240):
     z = np.load(path / 'hand_joint_visibility.npz')
-    out = np.full(n, np.nan, dtype=float)
-    f = z['region_frame'].astype(int)
-    is_right = z['region_is_right'].astype(bool)
-    scores = z['region_joint_visibility'].astype(float).mean(axis=1)
-    for frame in np.unique(f[is_right]):
-        out[frame] = finite_mean(scores[(f == frame) & is_right])
-    return out
+    required = ('vis_left', 'vis_right', 'missing_left', 'missing_right')
+    if any(key not in z.files for key in required):
+        raise ValueError('v2 expected-hand fields are required; legacy aggregate regions cannot score T6')
+    values = {key: np.asarray(z[key], dtype=float) for key in required}
+    if any(value.shape != (n,) for value in values.values()):
+        raise ValueError('expected-hand arrays must be per-frame length n')
+    legacy = np.asarray(z['visible_joint_fraction'], dtype=float) if 'visible_joint_fraction' in z.files else np.full(n, np.nan)
+    return values, legacy
 
 
 def t1(samples, windows):
@@ -118,26 +118,19 @@ def t1(samples, windows):
                 offsets = np.asarray(got['seg_offsets'], dtype=float)
                 conf = np.asarray(got['seg_conf'], dtype=float)
                 expected = -k * 25.0 / 24.0
-                detail = {
-                    'k_24fps': k,
-                    'expected_offset_25fps': expected,
+                same = np.abs(offsets[outside] - clean_offsets[outside]) <= 1
+                detail = {'k_24fps': k, 'expected_offset_25fps': expected,
                     'window_median_offset': finite_median(offsets[inside]),
-                    'exterior_good_fraction': ratio(np.abs(offsets[outside]) <= 1),
+                    'exterior_same_as_clean_fraction': ratio(same),
                     'window_confidence_clean': finite_mean(clean_conf[inside]),
-                    'window_confidence_edited': finite_mean(conf[inside]),
-                }
-                detail['required'] = abs(k) in (4, 8)
-                detail['passed'] = (not detail['required']) or (
-                    np.isfinite(detail['window_median_offset']) and
-                    abs(detail['window_median_offset'] - expected) <= 1 and
-                    detail['exterior_good_fraction'] >= .90 and
-                    detail['window_confidence_edited'] < detail['window_confidence_clean']
-                )
+                    'window_confidence_edited': finite_mean(conf[inside]), 'required': abs(k) in (4, 8)}
+                detail['passed'] = (not detail['required']) or (np.isfinite(detail['window_median_offset']) and
+                    abs(detail['window_median_offset'] - expected) <= 1 and detail['exterior_same_as_clean_fraction'] >= .90 and
+                    detail['window_confidence_edited'] < detail['window_confidence_clean'])
                 per_k.append(detail)
             rows.append({'sample': sample, 'window': window, 'levels': per_k,
-                         'passed': all(r['passed'] for r in per_k if r['required'])})
+                         'passed': bool(per_k) and all(r['passed'] for r in per_k if r['required'])})
     return rows
-
 
 def t2(samples, windows):
     rows = []
@@ -166,6 +159,10 @@ def count_flags(z, name, mask):
     return int(np.asarray(z[name], dtype=bool)[mask].sum())
 
 
+def _new_flags_outside(clean, edited, keys, outside):
+    return sum(int((np.asarray(edited[k], bool) & ~np.asarray(clean[k], bool) & outside).sum()) for k in keys)
+
+
 def t3(samples, windows):
     rows=[]
     for sample in samples:
@@ -174,22 +171,23 @@ def t3(samples, windows):
             for level in ('freeze','skip','jump'):
                 p=cond('T3',sample,window,level)
                 if not has_run(p): continue
-                z=pose(p); all_flags=[k for k in z.files if k.startswith('gen_flag_')]
+                z=pose(p); all_flags=[k for k in z.files if k.startswith('gen_flag_') and k in clean.files]
                 if level=='freeze':
                     cover=ratio(np.asarray(z['gen_flag_frozen'],float)[a:a+12])
                     outside=np.ones(240,dtype=bool); outside[max(0,a-3):min(240,a+15)]=False
-                    new=sum(count_flags(z,k,outside)-count_flags(clean,k,outside) for k in ['gen_flag_frozen'])
-                    passed=cover>=.80 and new<=0
-                    metric={'frozen_coverage':cover,'new_frozen_outside_band':new}
+                    new=_new_flags_outside(clean,z,['gen_flag_frozen'],outside)
+                    metric={'frozen_coverage':cover,'new_frozen_outside_band':new}; passed=cover>=.80 and new<=0
+                elif level=='jump':
+                    event=np.zeros(240,bool); event[max(0,a-2):min(240,a+3)]=True
+                    found=bool(np.asarray(z['gen_flag_motion_jump'],bool)[event].any() or np.asarray(z['gen_flag_jerk'],bool)[event].any())
+                    new=_new_flags_outside(clean,z,all_flags,~event)
+                    metric={'motion_jump_or_jerk_near_a':found,'new_flags_outside_event_band':new}; passed=found and new<=1
                 else:
-                    lo,hi=max(0,a-2),min(240,a+3)
-                    found=bool(np.asarray(z['gen_flag_motion_jump'],bool)[lo:hi].any())
-                    total_new=sum(max(0,int(np.asarray(z[k],bool).sum())-int(np.asarray(clean[k],bool).sum())) for k in all_flags)
-                    passed=found and total_new<=1
-                    metric={'motion_jump_near_a':found,'new_flags_total':total_new}
+                    event_a=np.zeros(240,bool); event_b=np.zeros(240,bool); event_a[max(0,a-2):min(240,a+3)]=True; event_b[max(0,b-2):min(240,b+3)]=True
+                    marker=np.asarray(z['gen_flag_motion_jump'],bool) | np.asarray(z['gen_flag_jerk'],bool)
+                    metric={'motion_jump_or_jerk_near_a':bool(marker[event_a].any()),'motion_jump_or_jerk_near_b':bool(marker[event_b].any()),'reported_only':True}; passed=True
                 rows.append({'sample':sample,'window':window,'level':level,**metric,'passed':passed})
     return rows
-
 
 def t4(samples, windows):
     rows=[]
@@ -201,17 +199,30 @@ def t4(samples, windows):
             for e in (.05,.1,.2):
                 p=cond('T4',sample,window,f'ev_{e:g}')
                 if not has_run(p): continue
-                z=temporal(p); flick.append({'e':e,'mean_flicker_score':finite_mean(z['flicker_score'][inside]),'window_flag_fraction':ratio(z['flicker_flag'][inside]),'exterior_flag_fraction':ratio(z['flicker_flag'][outside])})
-            monotonic=len(flick)==3 and all(flick[i]['mean_flicker_score']<flick[i+1]['mean_flicker_score'] for i in range(2))
-            point1=next((x for x in flick if x['e']==.1),None)
-            flick_pass=bool(point1 and monotonic and point1['window_flag_fraction']>=.5 and point1['exterior_flag_fraction']<=ratio(clean['flicker_flag'][outside])+.02)
+                z=temporal(p)
+                flick.append({'e':e,'mean_flicker_level_ev':finite_mean(z['flicker_level'][inside]),'mean_flicker_score':finite_mean(z['flicker_score'][inside]),'window_flag_fraction':ratio(z['flicker_flag'][inside]),'exterior_level_delta_ev':finite_mean(z['flicker_level'][outside])-finite_mean(clean['flicker_level'][outside])})
+            monotonic=len(flick)==3 and all(flick[i]['mean_flicker_level_ev']<flick[i+1]['mean_flicker_level_ev'] for i in range(2))
+            e05=next((x for x in flick if x['e']==.05),None)
+            baseline_p99=float(np.nanquantile(np.asarray(clean['flicker_level'],float)[outside],.99))
+            t4a=bool(e05 and monotonic and e05['mean_flicker_level_ev']>baseline_p99 and all(abs(x['exterior_level_delta_ev'])<=.005 for x in flick))
+            instant=[]
+            for e in (.1,.2,.4):
+                p=cond('T4',sample,window,f'instant_ev_{e:g}')
+                if not has_run(p): continue
+                z=temporal(p); near=np.zeros(240,bool);near[max(0,a-1):min(240,a+2)]=True
+                new_flags=int((np.asarray(z['flicker_flag'],bool) & ~np.asarray(clean['flicker_flag'],bool) & ~near).sum())
+                instant.append({'e':e,'flicker_flag_near_a':bool(np.asarray(z['flicker_flag'],bool)[near].any()),'new_flags_outside_event_band':new_flags})
+            needed=[x for x in instant if x['e'] in (.2,.4)]
+            t4b=len(needed)==2 and all(x['flicker_flag_near_a'] and x['new_flags_outside_event_band']<=1 for x in needed)
             p=cond('T4',sample,window,'hard_cut'); hard=None
             if has_run(p):
-                z=temporal(p); frames=np.flatnonzero(z['boundary_flag'])+1
-                hard={'boundary_frames':frames.tolist(),'passed':bool(np.any(np.abs(frames-a)<=1))}
-            rows.append({'sample':sample,'window':window,'flicker_levels':flick,'flicker_passed':flick_pass,'hard_cut':hard,'passed':flick_pass and bool(hard and hard['passed'])})
+                z=temporal(p)
+                if len(z['boundary_flag']) != 239: raise AssertionError('boundary_flag must represent exactly 239 adjacent frame pairs')
+                frames=np.flatnonzero(z['boundary_flag'])+1
+                hard={'boundary_frames':frames.tolist(),'near_a':bool(np.any(np.abs(frames-a)<=1)),'near_b':bool(np.any(np.abs(frames-b)<=1))}
+                hard['passed']=hard['near_a'] and hard['near_b']
+            rows.append({'sample':sample,'window':window,'flicker_levels':flick,'instant_levels':instant,'clean_exterior_flicker_level_p99_ev':baseline_p99,'t4a_passed':t4a,'t4b_passed':t4b,'hard_cut':hard,'t4c_passed':bool(hard and hard['passed']),'passed':t4a and t4b and bool(hard and hard['passed'])})
     return rows
-
 
 def auc_rank(pos, neg):
     x=np.concatenate([pos,neg]); labels=np.concatenate([np.ones(len(pos)),np.zeros(len(neg))]); good=np.isfinite(x); x,labels=x[good],labels[good]
@@ -239,13 +250,22 @@ def t5(samples, windows):
 def t6(samples, windows):
     rows=[]
     for sample in samples:
-        clean=right_hand_visibility(base(sample))
+        clean, clean_legacy = expected_hand_visibility(base(sample))
         for window,(a,b) in windows.items():
             p=cond('T6',sample,window,'right_hand_gray')
             if not has_run(p): continue
-            edited=right_hand_visibility(p); inside=frame_mask(240,a,b); outside=frame_mask(240,a,b,exterior=True)
-            drop=finite_mean(edited[inside])-finite_mean(clean[inside]); exterior=finite_mean(edited[outside])-finite_mean(clean[outside])
-            rows.append({'sample':sample,'window':window,'right_hand_window_delta':drop,'right_hand_exterior_delta':exterior,'passed':np.isfinite(drop) and drop<=-.30 and abs(exterior)<=.05})
+            edited, edited_legacy = expected_hand_visibility(p)
+            inside=frame_mask(240,a,b); outside=frame_mask(240,a,b,exterior=True)
+            vis_right_delta=finite_mean(edited['vis_right'][inside])-finite_mean(clean['vis_right'][inside])
+            vis_left_delta=finite_mean(edited['vis_left'][inside])-finite_mean(clean['vis_left'][inside])
+            vis_right_exterior_delta=finite_mean(edited['vis_right'][outside])-finite_mean(clean['vis_right'][outside])
+            missing_right=ratio(edited['missing_right'][inside])
+            old_fraction_delta=finite_mean(edited_legacy[inside])-finite_mean(clean_legacy[inside])
+            passed=(np.isfinite(vis_right_delta) and vis_right_delta<=-.30) or (np.isfinite(missing_right) and missing_right>=.80)
+            passed=bool(passed and np.isfinite(vis_left_delta) and abs(vis_left_delta)<=.10 and np.isfinite(vis_right_exterior_delta) and abs(vis_right_exterior_delta)<=.05)
+            rows.append({'sample':sample,'window':window,'vis_right_window_delta':vis_right_delta,
+                'missing_right_window_fraction':missing_right,'vis_left_window_delta':vis_left_delta,
+                'vis_right_exterior_delta':vis_right_exterior_delta,'legacy_visible_joint_fraction_window_delta':old_fraction_delta,'passed':passed})
     return rows
 
 

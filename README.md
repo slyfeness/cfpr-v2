@@ -8,8 +8,10 @@ gate was not met.  Results are reported as failures where applicable; no
 thresholds, samples, or windows were changed to obtain a pass.
 
 The underlying Seamless Interaction material is licensed CC-BY-NC 4.0 and is
-used only for non-commercial research.  This repository does **not** distribute
-the dataset, videos, frames, audio, annotations, model weights, checkpoints, or
-real-person screenshots.
+used only for non-commercial research. This repository does **not** distribute
+the dataset, source videos, frame arrays, audio, annotations, model weights, or
+checkpoints. When a release manifest explicitly lists them, compact derived
+side-by-side preview videos and contact-sheet PNGs may be included solely for
+auditing the registered interventions; they follow the taskbook size limits.
 
 See `docs/status/evaluator_unit_tests_20261108.md` for the pilot record.

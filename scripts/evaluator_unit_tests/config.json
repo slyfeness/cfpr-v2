@@ -1,22 +1,84 @@
 {
-  "run_id": "evaluator_unit_tests_20261108",
+  "run_id": "evaluator_unit_tests_20261108_v2",
   "seed": 20261108,
   "fps": 24,
   "audio_sample_rate": 16000,
   "frames": 240,
-  "windows": {"W1": [96, 144], "W2": [168, 216]},
+  "windows": {
+    "W1": [
+      96,
+      144
+    ],
+    "W2": [
+      168,
+      216
+    ]
+  },
   "transition_exclusion_frames": 6,
-  "samples": ["CRB100_001", "CRB100_002", "CRB100_025", "CRB100_050", "CRB100_056", "CRB100_075", "CRB100_087", "CRB100_090"],
-  "t1_shifts_24fps": [-8, -4, -2, 2, 4, 8],
-  "t3": {"freeze_frames": 12, "skip_frames": 6, "jump_frames": 30},
-  "t4_flicker_ev": [0.05, 0.1, 0.2],
+  "samples": [
+    "CRB100_001",
+    "CRB100_002",
+    "CRB100_025",
+    "CRB100_050",
+    "CRB100_056",
+    "CRB100_075",
+    "CRB100_087",
+    "CRB100_090"
+  ],
+  "t1_shifts_24fps": [
+    -8,
+    -4,
+    -2,
+    2,
+    4,
+    8
+  ],
+  "t3": {
+    "freeze_frames": 12,
+    "skip_frames": 12,
+    "jump_frames": 30
+  },
+  "t4_flicker_ev": [
+    0.05,
+    0.1,
+    0.2
+  ],
   "t4_hard_cut_offset": 48,
-  "t6": {"hand_confidence": 0.3, "margin": 0.2, "right_hand_index": 0},
+  "t6": {
+    "hand_confidence": 0.3,
+    "margin": 0.2,
+    "right_hand_index": 1,
+    "expected_box_margin": 0.2,
+    "expected_min_points": 5,
+    "expected_iou": 0.3
+  },
   "emotion": {
     "source_fps": 30,
-    "source_class_order": ["anger", "contempt", "disgust", "fear", "happiness", "neutral", "sadness", "surprise"],
-    "evaluator_class_order": ["anger", "disgust", "fear", "happiness", "neutral", "sadness", "surprise"],
+    "source_class_order": [
+      "anger",
+      "contempt",
+      "disgust",
+      "fear",
+      "happiness",
+      "neutral",
+      "sadness",
+      "surprise"
+    ],
+    "evaluator_class_order": [
+      "anger",
+      "disgust",
+      "fear",
+      "happiness",
+      "neutral",
+      "sadness",
+      "surprise"
+    ],
     "dropped_source_class": "contempt",
     "segment_seconds": 0.5
-  }
+  },
+  "t4_single_frame_ev": [
+    0.1,
+    0.2,
+    0.4
+  ]
 }

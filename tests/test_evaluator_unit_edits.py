@@ -1,8 +1,11 @@
 import numpy as np
 import pytest
 
+from scripts.evaluator_unit_tests.run_tests import expected_boxes_from_dwpose
+
 from scripts.evaluator_unit_tests.make_edits import (
     align_emotion_scores,
+    apply_single_frame_exposure_ev,
     apply_flicker_ev,
     assert_changed_frames,
     hard_cut_window,
@@ -97,6 +100,24 @@ def test_window_audio_shift_has_expected_signed_lag_and_unchanged_exterior():
 
 
 @pytest.mark.parametrize("shift", [-41, 41])
+def test_window_audio_shift_uses_adjacent_real_audio_to_fill_the_vacated_edge(shift):
+    audio = np.arange(1200, dtype=np.int16)
+    out, _ = shift_audio_window(audio, 300, 900, shift_samples=shift)
+    if shift > 0:
+        np.testing.assert_array_equal(out[300:341], audio[259:300])
+    else:
+        np.testing.assert_array_equal(out[859:900], audio[900:941])
+
+
+def test_single_frame_exposure_changes_exactly_the_registered_frame():
+    clean = np.full((8, 2, 2, 3), 128, dtype=np.uint8)
+    out, meta = apply_single_frame_exposure_ev(clean, 4, ev=0.4)
+    assert_changed_frames(clean, out, [4])
+    assert meta["frame"] == 4
+    assert meta["ev"] == pytest.approx(0.4)
+
+
+@pytest.mark.parametrize("shift", [-41, 41])
 def test_audio_shift_cross_correlation_recovers_the_requested_signed_lag(shift):
     rng = np.random.default_rng(20261108)
     audio = rng.integers(-12000, 12000, size=4096, dtype=np.int16)
@@ -112,3 +133,17 @@ def test_emotion_alignment_uses_start_seconds_and_30_to_24_fps_linear_interpolat
     np.testing.assert_allclose(indices, [60.0, 61.25, 62.5])
     np.testing.assert_allclose(out[:, 0], [60.0, 61.25, 62.5])
     np.testing.assert_allclose(out[:, 1], 1.0)
+
+
+def test_expected_boxes_from_dwpose_preserves_dwp_pose_left_then_right_semantics():
+    hands = np.full((2, 2, 21, 2), np.nan, dtype=np.float32)
+    scores = np.zeros((2, 2, 21), dtype=np.float32)
+    hands[0, 0] = np.array([[.10, .20], [.20, .30]] + [[.15, .25]] * 19)
+    scores[0, 0] = .9
+    hands[0, 1] = np.array([[.60, .40], [.70, .50]] + [[.65, .45]] * 19)
+    scores[0, 1] = .9
+    left, right = expected_boxes_from_dwpose(hands, scores, width=100, height=100, confidence=0.3, minimum_points=5, margin=0.2)
+    np.testing.assert_allclose(left[0], [8, 18, 22, 32])
+    np.testing.assert_allclose(right[0], [58, 38, 72, 52])
+    assert np.isnan(left[1]).all()
+    assert np.isnan(right[1]).all()

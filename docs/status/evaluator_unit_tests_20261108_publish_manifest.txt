@@ -1,0 +1,15 @@
+# Public publication whitelist: evaluator unit-test v2 implementation stage.
+# No raw datasets, arrays, audio, weights, credentials, or media are listed in this stage.
+docs/tasks/2026-11-08_evaluator_unit_tests.md
+docs/tasks/2026-11-08_evaluator_unit_tests_v2.md
+docs/status/evaluator_unit_tests_20261108.md
+scripts/evaluator_unit_tests/__init__.py
+scripts/evaluator_unit_tests/analyze.py
+scripts/evaluator_unit_tests/config.json
+scripts/evaluator_unit_tests/make_edits.py
+scripts/evaluator_unit_tests/run_tests.py
+scripts/evaluators/eval_hand_joint_visibility.py
+src/hand_expected_visibility.py
+tests/test_evaluator_unit_edits.py
+tests/test_evaluator_unit_analysis_v2.py
+tests/test_hand_visibility_expected.py

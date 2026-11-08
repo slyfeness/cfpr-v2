@@ -8,11 +8,11 @@ import numpy as np
 from scipy.io import wavfile
 from .make_edits import (align_emotion_scores, apply_flicker_ev, assert_changed_frames,
     freeze_window, hard_cut_window, jump_frame, occlude_right_hand, replace_window,
-    shift_audio_window, skip_forward_window, verify_audio_shift_xcorr)
+    shift_audio_window, skip_forward_window, verify_audio_shift_xcorr, apply_single_frame_exposure_ev)
 
 ROOT=Path('/data/lanyi/projects/cfpr-v2')
 INPUT=Path('/data/lanyi/outputs/cfpr-v2/prepared_inputs_aligned_v1')
-OUT=Path('/data/lanyi/outputs/cfpr-v2/evaluator_unit_tests_20261108')
+OUT=Path('/data/lanyi/outputs/cfpr-v2/evaluator_unit_tests_20261108_v2')
 
 def dump(obj, path):
     path.parent.mkdir(parents=True, exist_ok=True); path.write_text(json.dumps(obj, indent=2, ensure_ascii=False))
@@ -56,6 +56,43 @@ def validate_existing_t1_audio(sample, window, level, cfg):
         'audio_shift_xcorr':verify_audio_shift_xcorr(clean,changed,sample_a,sample_b,shift),
         'reason_for_sidecar':'artifact predates mandatory xcorr field in edit_meta.json; existing output is not overwritten',
     },target)
+
+def expected_boxes_from_dwpose(hands, hand_scores, *, width, height, confidence=0.3, minimum_points=5, margin=0.2):
+    """Return (left, right) xyxy boxes from DWPose's verified [left, right] order."""
+    hands = np.asarray(hands, dtype=float)
+    hand_scores = np.asarray(hand_scores, dtype=float)
+    if hands.ndim != 4 or hands.shape[1:] != (2, 21, 2) or hand_scores.shape != hands.shape[:3]:
+        raise ValueError("expected DWPose hands [T,2,21,2] and scores [T,2,21]")
+    out = [np.full((len(hands), 4), np.nan, dtype=np.float32) for _ in range(2)]
+    for frame in range(len(hands)):
+        for side in (0, 1):
+            points = hands[frame, side]
+            valid = (hand_scores[frame, side] >= confidence) & np.isfinite(points).all(axis=1)
+            if int(valid.sum()) < minimum_points:
+                continue
+            xy = points[valid].copy()
+            if np.nanmax(np.abs(xy)) <= 1.5:
+                xy[:, 0] *= width
+                xy[:, 1] *= height
+            x0, y0 = xy.min(axis=0); x1, y1 = xy.max(axis=0)
+            dx, dy = max(1.0, x1 - x0), max(1.0, y1 - y0)
+            out[side][frame] = [max(0., x0 - margin * dx), max(0., y0 - margin * dy),
+                                min(float(width), x1 + margin * dx), min(float(height), y1 + margin * dy)]
+    return tuple(out)
+
+
+def write_expected_hands(dwpose_path, frame_path, target, cfg):
+    if target.exists():
+        raise FileExistsError(f"refusing to overwrite expected hand boxes: {target}")
+    z = np.load(dwpose_path)
+    frames = np.load(frame_path, mmap_mode='r')
+    left, right = expected_boxes_from_dwpose(z['hands'], z['hands_score'], width=frames.shape[2], height=frames.shape[1],
+        confidence=cfg['t6']['hand_confidence'], minimum_points=cfg['t6']['expected_min_points'], margin=cfg['t6']['expected_box_margin'])
+    target.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(target, left_box=left, right_box=right, source=np.asarray('DWPose clean frames; index0=person-left,index1=person-right'),
+        confidence=np.asarray(cfg['t6']['hand_confidence']), minimum_points=np.asarray(cfg['t6']['expected_min_points']), margin=np.asarray(cfg['t6']['expected_box_margin']))
+    return target
+
 
 def meta_write(path, clean, edited, edit, expected, extra=None):
     assert_changed_frames(clean,edited,expected)
@@ -112,6 +149,8 @@ def prepare_sample(sample,cfg,only_t6=False):
             for e in cfg['t4_flicker_ev']:
                 x,m=apply_flicker_ev(clean,a,b,e);p=base('T4',f'ev_{e:g}');p.mkdir(parents=True,exist_ok=True);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,range(a,b))
             x,m=hard_cut_window(clean,a,b,cfg['t4_hard_cut_offset']);p=base('T4','hard_cut');p.mkdir(parents=True,exist_ok=True);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,range(a,b))
+            for e in cfg['t4_single_frame_ev']:
+                x,m=apply_single_frame_exposure_ev(clean,a,e);p=base('T4',f'instant_ev_{e:g}');p.mkdir(parents=True,exist_ok=True);np.save(p/'frames.npy',x);meta_write(p,clean,x,m,[a])
             wrong=labels.copy()
             segment_start,segment_end=a//12,b//12
             eligible=np.arange(segment_start,segment_end)[replacement[segment_start:segment_end]>=0]
@@ -155,8 +194,31 @@ def evaluate(sample, test, window, level, gpu):
     timing['temporal_context_cpu_seconds']=call([acc,e/'eval_temporal_context.py',out/'temporal'],out/'log_temporal_context.txt',cpu=True)
     timing['pose_cpu_seconds']=call([acc,e/'eval_pose.py',out/'dwpose.npz',out/'pose','--real',OUT/'clean'/sample/'evaluators'/'dwpose.npz'],out/'log_pose.txt',cpu=True)
     timing['emotion_cpu_seconds']=call([acc,e/'eval_emotion_explicit.py',out/'face.json',target,out/'emotion.json'],out/'log_emotion.txt',cpu=True)
-    guard.append(gpu_guard(gpu,6144)); timing['hand_gpu_seconds']=call([hand,e/'eval_hand_joint_visibility.py',frames,out/'hand_joint_visibility.npz','--stride','1'],out/'log_hand.txt',{'CUDA_VISIBLE_DEVICES':str(gpu)})
+    expected=OUT/'clean'/sample/'expected_hands.npz'
+    if not expected.exists(): raise FileNotFoundError(f'expected hand boxes required before condition evaluation: {expected}')
+    guard.append(gpu_guard(gpu,6144)); timing['hand_gpu_seconds']=call([hand,e/'eval_hand_joint_visibility.py',frames,out/'hand_joint_visibility.npz','--stride','1','--expected',expected,'--expected-iou',str(cfg['t6']['expected_iou'])],out/'log_hand.txt',{'CUDA_VISIBLE_DEVICES':str(gpu)})
     dump({'sample':sample,'test':test,'window':window,'level':level,'frame_source':str(frames),'audio_source':str(audio),'target_source':str(target),'gpu_preflight':guard,'wall_clock_seconds':timing},out/'run_meta.json')
+
+
+def evaluate_clean(sample, gpu):
+    cfg=json.loads((ROOT/'scripts/evaluator_unit_tests/config.json').read_text())
+    p=OUT/'clean'/sample
+    clean=decode_once(sample,p/'clean.npy',cfg); inp=INPUT/sample; out=p/'evaluators'; out.mkdir(parents=True,exist_ok=True)
+    target=OUT/'T5'/sample/'W1'/'correct'/'target.json'
+    if not target.exists(): raise FileNotFoundError('prepare_sample must create the frozen T5 target before clean evaluation')
+    e=ROOT/'scripts/evaluators'; acc='/data/lanyi/.conda/envs/cfpr-v2-acc/bin/python'; dh='/data/lanyi/.conda/envs/dh-eval-prm/bin/python'; sync='/data/lanyi/.conda/envs/syncnet/bin/python'; hand='/data/lanyi/.conda/envs/cfpr-wilor-evaluator/bin/python'
+    timing={}
+    timing['dwpose_cpu_seconds']=call([acc,e/'extract_dwpose.py',clean,out/'dwpose.npz'],out/'log_dwpose.txt',cpu=True)
+    expected=write_expected_hands(out/'dwpose.npz',clean,p/'expected_hands.npz',cfg)
+    timing['arcface_cpu_seconds']=call([dh,e/'score_emotion_refs.py',out/'face.json',f'gen={inp}/reference.png,{clean}'],out/'log_face.txt',cpu=True)
+    timing['lipsync_cpu_seconds']=call([sync,e/'eval_lipsync.py','gen',clean,inp/'audio.wav',out/'lipsync'],out/'log_lipsync.txt',cpu=True)
+    guard=[]; guard.append(gpu_guard(gpu,4096)); timing['dino_gpu_seconds']=call([acc,e/'eval_identity_dino.py',out/'dino.json',sample,f'gen={clean}'],out/'log_dino.txt',{'CUDA_VISIBLE_DEVICES':str(gpu)})
+    guard.append(gpu_guard(gpu,4096)); timing['temporal_evidence_gpu_seconds']=call([dh,e/'eval_temporal_evidence.py',clean,out/'temporal'],out/'log_temporal.txt',{'CUDA_VISIBLE_DEVICES':str(gpu)})
+    timing['temporal_context_cpu_seconds']=call([acc,e/'eval_temporal_context.py',out/'temporal'],out/'log_temporal_context.txt',cpu=True)
+    timing['pose_cpu_seconds']=call([acc,e/'eval_pose.py',out/'dwpose.npz',out/'pose','--real',out/'dwpose.npz'],out/'log_pose.txt',cpu=True)
+    timing['emotion_cpu_seconds']=call([acc,e/'eval_emotion_explicit.py',out/'face.json',target,out/'emotion.json'],out/'log_emotion.txt',cpu=True)
+    guard.append(gpu_guard(gpu,6144)); timing['hand_gpu_seconds']=call([hand,e/'eval_hand_joint_visibility.py',clean,out/'hand_joint_visibility.npz','--stride','1','--expected',expected,'--expected-iou',str(cfg['t6']['expected_iou'])],out/'log_hand.txt',{'CUDA_VISIBLE_DEVICES':str(gpu)})
+    dump({'sample':sample,'mode':'clean_baseline_v2','frame_source':str(clean),'audio_source':str(inp/'audio.wav'),'target_source':str(target),'expected_hands':str(expected),'gpu_preflight':guard,'wall_clock_seconds':timing},out/'run_meta.json')
 
 def evaluate_clean_repeat(sample, tag, gpu):
     """Run the fixed clean input into a fresh, immutable determinism directory."""
@@ -177,14 +239,19 @@ def evaluate_clean_repeat(sample, tag, gpu):
     timing['temporal_context_cpu_seconds']=call([acc,e/'eval_temporal_context.py',out/'temporal'],out/'log_temporal_context.txt',cpu=True)
     timing['pose_cpu_seconds']=call([acc,e/'eval_pose.py',out/'dwpose.npz',out/'pose','--real',OUT/'clean'/sample/'evaluators'/'dwpose.npz'],out/'log_pose.txt',cpu=True)
     timing['emotion_cpu_seconds']=call([acc,e/'eval_emotion_explicit.py',out/'face.json',target,out/'emotion.json'],out/'log_emotion.txt',cpu=True)
-    guard.append(gpu_guard(gpu,6144)); timing['hand_gpu_seconds']=call([hand,e/'eval_hand_joint_visibility.py',clean,out/'hand_joint_visibility.npz','--stride','1'],out/'log_hand.txt',{'CUDA_VISIBLE_DEVICES':str(gpu)})
+    expected=OUT/'clean'/sample/'expected_hands.npz'
+    if not expected.exists(): raise FileNotFoundError(f'expected hand boxes required before determinism repeat: {expected}')
+    guard.append(gpu_guard(gpu,6144)); timing['hand_gpu_seconds']=call([hand,e/'eval_hand_joint_visibility.py',clean,out/'hand_joint_visibility.npz','--stride','1','--expected',expected,'--expected-iou',str(cfg['t6']['expected_iou'])],out/'log_hand.txt',{'CUDA_VISIBLE_DEVICES':str(gpu)})
     dump({'sample':sample,'mode':'clean_determinism_repeat','tag':tag,'frame_source':str(clean),'audio_source':str(inp/'audio.wav'),'target_source':str(target),'gpu_preflight':guard,'wall_clock_seconds':timing},out/'run_meta.json')
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--config',default=str(ROOT/'scripts/evaluator_unit_tests/config.json'));ap.add_argument('--sample',action='append');ap.add_argument('--only-t6',action='store_true');ap.add_argument('--evaluate',nargs=4,metavar=('TEST','WINDOW','LEVEL','GPU'));ap.add_argument('--validate-t1-audio',nargs=2,metavar=('WINDOW','LEVEL'));ap.add_argument('--clean-repeat',nargs=2,metavar=('TAG','GPU'));a=ap.parse_args();cfg=json.loads(Path(a.config).read_text())
+    ap=argparse.ArgumentParser();ap.add_argument('--config',default=str(ROOT/'scripts/evaluator_unit_tests/config.json'));ap.add_argument('--sample',action='append');ap.add_argument('--only-t6',action='store_true');ap.add_argument('--evaluate',nargs=4,metavar=('TEST','WINDOW','LEVEL','GPU'));ap.add_argument('--evaluate-clean',metavar='GPU');ap.add_argument('--validate-t1-audio',nargs=2,metavar=('WINDOW','LEVEL'));ap.add_argument('--clean-repeat',nargs=2,metavar=('TAG','GPU'));a=ap.parse_args();cfg=json.loads(Path(a.config).read_text())
     if a.validate_t1_audio:
         if not a.sample or len(a.sample)!=1: raise ValueError('--validate-t1-audio needs exactly one --sample')
         validate_existing_t1_audio(a.sample[0],*a.validate_t1_audio,cfg); return
+    if a.evaluate_clean:
+        if not a.sample or len(a.sample)!=1: raise ValueError('--evaluate-clean needs exactly one --sample')
+        evaluate_clean(a.sample[0],a.evaluate_clean); return
     if a.clean_repeat:
         if not a.sample or len(a.sample)!=1: raise ValueError('--clean-repeat needs exactly one --sample')
         evaluate_clean_repeat(a.sample[0],*a.clean_repeat); return

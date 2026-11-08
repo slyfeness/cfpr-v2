@@ -99,3 +99,58 @@ are generated from clean DWPose only.
 The v2 CRB100_001 W1 queue is running at the time of this update. No
 threshold, sample, window, reference file, evaluator weight, generator, or
 training configuration has been changed.
+
+
+### Revision 2 CRB100_001 × W1 pilot
+
+All 20 registered conditions completed. Edit self-check: 20/20 passed. Clean
+repeat5/repeat6 produced elementwise-equal (NaN-aware) arrays for DWPose,
+ArcFace, SyncNet, pose, temporal evidence/context, and expected-hand WiLoR.
+The actual pilot decisions are T1 pass, T2 pass, T3 freeze pass, T3 jump pass
+(skip is report-only), T4a/T4b/T4c pass, T5 pass, and T6 fail. T6's expected
+right-hand visibility fell by -0.8219 and missing-right fraction was 0.9792,
+but left-hand visibility also fell by -0.4571 (required absolute change <=0.10).
+This is retained as a control-isolation failure, not repaired by changing a
+threshold, sample, or window. Preview assets are audit-only and listed in the
+publication manifest; their pixels are never evaluator inputs.
+
+### Revision 2 pilot audit, reproducibility, and publication preparation
+
+This subsection supersedes the implementation-stage sentence that called the
+queue “running”; the completed pilot result above is authoritative. The
+pre-registered v2 decision logic was fixed before any unseen person was
+started. No threshold, sample, window, model, or evaluator reference was
+changed after observing this result.
+
+- **T1:** every registered offset had relative exterior agreement 1.0 and the
+  required direction/delta.
+- **T2:** ArcFace target-window delta was -0.779776 and exterior delta was
+  0.0.
+- **T3:** freeze coverage was 1.0 with no exterior new frozen flag; the jump
+  evidence lay near the registered event and was exterior-clean. The
+  registered skip condition is reported but does not enter the v2 pass count.
+- **T4:** flicker-level means were 0.032202, 0.047016, and 0.100055 for
+  0.05/0.10/0.20 EV; the one-frame condition triggered; the hard-cut
+  boundaries were 96 and 144 and all 239 adjacent-pair records were present.
+- **T5:** correct/wrong means were 0.899689/0.252315; pooled AUC was 1.0.
+- **T6:** right visibility delta was -0.821909 and right missing fraction
+  0.979167, but left visibility delta was -0.457066. The required
+  non-target isolation condition (absolute left change <= 0.10) therefore
+  fails. This failure remains a result, rather than a basis to alter the
+  intervention or threshold.
+
+The clean determinism retries repeat1--repeat4 are retained in the private
+artifact root as failed setup attempts: repeat1/2 targeted a nonexistent clean
+emotion target; repeat3/4 omitted the loaded configuration in the repeat
+path. They produced no accepted result. With those execution bugs fixed,
+repeat5/repeat6 completed and `clean_determinism_check_v2.json` records
+NaN-aware elementwise equality for every numeric evaluator output and exact
+equality for identifiers.
+
+The pilot generated 20 paired audit previews (40 files): an MP4 comparison and
+a PNG contact sheet for each registered condition. They are derived only after
+evaluation and are never evaluator inputs. The released copies were size-audited:
+every MP4 is below 3 MB, every PNG is below 500 KB, and their total is
+6,391,621 bytes. The assets contain the approved public preview frames only;
+no arrays, audio, checkpoints, raw datasets, credentials, or full-resolution
+source material are included.

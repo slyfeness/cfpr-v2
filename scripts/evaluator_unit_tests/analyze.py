@@ -269,15 +269,21 @@ def t6(samples, windows):
     return rows
 
 
-def by_person_both_windows(rows, test):
-    values={}
-    for row in rows:
-        if test=='T3': key=(row['sample'],row['window']); values.setdefault(key,[]).append(row['passed'])
-        else: values[(row['sample'],row['window'])]=[row['passed']]
-    person={}
-    for sample in {k[0] for k in values}:
-        person[sample]=all(all(values.get((sample,w),[False])) for w in ('W1','W2'))
-    return {'per_person':person,'passed_people':sum(person.values()),'overall_passed':sum(person.values())>=7}
+def v2_decision(rows, samples, *, field='passed', pilot_sample='CRB100_001'):
+    """Apply the fixed v2 rule: six of seven unseen people pass both windows."""
+    per_person = {}
+    for sample in samples:
+        matching = {(row['window']): bool(row.get(field, False)) for row in rows if row['sample'] == sample}
+        per_person[sample] = all(matching.get(window, False) for window in ('W1', 'W2'))
+    other = [sample for sample in samples if sample != pilot_sample]
+    count = sum(per_person[sample] for sample in other)
+    return {'pilot_sample': pilot_sample, 'pilot_both_windows': per_person.get(pilot_sample, False),
+            'per_person': per_person, 'other_seven_passed_people': count, 'required_other_seven_people': 6,
+            'overall_passed': count >= 6}
+
+
+def select_level(rows, level):
+    return [row for row in rows if row.get('level') == level]
 
 
 def main():
@@ -285,7 +291,14 @@ def main():
     cfg=load_json(ROOT/'scripts/evaluator_unit_tests/config.json'); samples=cfg['samples']; windows={k:tuple(v) for k,v in cfg['windows'].items()}
     result={'config':cfg,'analysis_conventions':{'nan_policy':'All aggregates exclude NaN; no NaN is replaced by zero.','frame_indexing':'0-based half-open windows; exterior excludes a six-frame band on either side.','segment_indexing':'12 frames per 0.5-second segment; a segment intersects a window when its half-open interval overlaps.'}}
     result['T1']=t1(samples,windows); result['T2']=t2(samples,windows); result['T3']=t3(samples,windows); result['T4']=t4(samples,windows); result['T5'],result['T5_pooled']=t5(samples,windows); result['T6']=t6(samples,windows)
-    result['decision']={test:by_person_both_windows(result[test],test) for test in ('T1','T2','T3','T4','T5','T6')}
+    result['decision']={
+        'T1':v2_decision(result['T1'],samples), 'T2':v2_decision(result['T2'],samples),
+        'T3_freeze':v2_decision(select_level(result['T3'],'freeze'),samples),
+        'T3_jump':v2_decision(select_level(result['T3'],'jump'),samples),
+        'T4a':v2_decision(result['T4'],samples,field='t4a_passed'),
+        'T4b':v2_decision(result['T4'],samples,field='t4b_passed'),
+        'T4c':v2_decision(result['T4'],samples,field='t4c_passed'),
+        'T5':v2_decision(result['T5'],samples), 'T6':v2_decision(result['T6'],samples)}
     path=Path(args.output)
     if path.exists(): raise FileExistsError(f'refusing to overwrite analysis output: {path}')
     path.parent.mkdir(parents=True,exist_ok=True); path.write_text(json.dumps(result,indent=2,ensure_ascii=False,allow_nan=True))

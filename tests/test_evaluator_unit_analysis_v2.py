@@ -71,3 +71,14 @@ def test_t6_uses_expected_right_hand_visibility_and_missingness(tmp_path, monkey
     assert row["vis_right_window_delta"] <= -.3
     assert row["missing_right_window_fraction"] == 1.0
     assert row["passed"] is True
+
+
+def test_v2_decision_excludes_seen_pilot_and_requires_six_of_other_seven():
+    rows=[]
+    for sample in ["CRB100_001", "a", "b", "c", "d", "e", "f", "g"]:
+        for window in ("W1", "W2"):
+            rows.append({"sample": sample, "window": window, "passed": sample != "g"})
+    decision=analyze.v2_decision(rows, samples=["CRB100_001", "a", "b", "c", "d", "e", "f", "g"])
+    assert decision["other_seven_passed_people"] == 6
+    assert decision["overall_passed"] is True
+    assert decision["pilot_sample"] == "CRB100_001"

@@ -222,13 +222,14 @@ def evaluate_clean(sample, gpu):
 
 def evaluate_clean_repeat(sample, tag, gpu):
     """Run the fixed clean input into a fresh, immutable determinism directory."""
+    cfg=json.loads((ROOT/'scripts/evaluator_unit_tests/config.json').read_text())
     p=OUT/'clean_repeats'/sample/tag
     if p.exists():
         raise FileExistsError(f'refusing to overwrite clean repeat output: {p}')
     inp=INPUT/sample; clean=OUT/'clean'/sample/'clean.npy'; out=p/'evaluators'; out.mkdir(parents=True)
-    target=OUT/'clean'/sample/'evaluators'/'emotion_target.json'
+    target=OUT/'T5'/sample/'W1'/'correct'/'target.json'
     if not clean.exists() or not target.exists():
-        raise FileNotFoundError('clean baseline and its registered emotion target must exist first')
+        raise FileNotFoundError('clean baseline and its registered W1 emotion target must exist first')
     e=ROOT/'scripts/evaluators'; acc='/data/lanyi/.conda/envs/cfpr-v2-acc/bin/python'; dh='/data/lanyi/.conda/envs/dh-eval-prm/bin/python'; sync='/data/lanyi/.conda/envs/syncnet/bin/python'; hand='/data/lanyi/.conda/envs/cfpr-wilor-evaluator/bin/python'
     timing={}
     timing['dwpose_cpu_seconds']=call([acc,e/'extract_dwpose.py',clean,out/'dwpose.npz'],out/'log_dwpose.txt',cpu=True)

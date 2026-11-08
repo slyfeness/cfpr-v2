@@ -198,9 +198,9 @@ def call(cmd, log, env=None, cpu=False):
     with log.open('w') as f: subprocess.run(prefix+list(map(str,cmd)),check=True,stdout=f,stderr=subprocess.STDOUT,env=runenv)
     return time.monotonic()-started
 
-def evaluate(sample, test, window, level, gpu):
+def evaluate(sample, test, window, level, gpu, output_dir="evaluators"):
     cfg=json.loads((ROOT/'scripts/evaluator_unit_tests/config.json').read_text()); p=OUT/test/sample/window/level
-    clean=OUT/'clean'/sample/'clean.npy'; inp=INPUT/sample; out=p/'evaluators'; fresh_dir(out)
+    clean=OUT/'clean'/sample/'clean.npy'; inp=INPUT/sample; out=p/output_dir; fresh_dir(out)
     frames=p/'frames.npy' if (p/'frames.npy').exists() else clean
     audio=p/'audio.wav' if (p/'audio.wav').exists() else inp/'audio.wav'
     target=p/'target.json' if (p/'target.json').exists() else OUT/'T5'/sample/window/'correct'/'target.json'
@@ -266,7 +266,7 @@ def evaluate_clean_repeat(sample, tag, gpu):
     dump({'sample':sample,'mode':'clean_determinism_repeat','tag':tag,'frame_source':str(clean),'audio_source':str(inp/'audio.wav'),'target_source':str(target),'gpu_preflight':guard,'wall_clock_seconds':timing},out/'run_meta.json')
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--config',default=str(ROOT/'scripts/evaluator_unit_tests/config.json'));ap.add_argument('--sample',action='append');ap.add_argument('--window',action='append', help='prepare only this registered window; refuses existing condition directories');ap.add_argument('--only-t6',action='store_true');ap.add_argument('--evaluate',nargs=4,metavar=('TEST','WINDOW','LEVEL','GPU'));ap.add_argument('--evaluate-clean',metavar='GPU');ap.add_argument('--validate-t1-audio',nargs=2,metavar=('WINDOW','LEVEL'));ap.add_argument('--clean-repeat',nargs=2,metavar=('TAG','GPU'));a=ap.parse_args();cfg=json.loads(Path(a.config).read_text())
+    ap=argparse.ArgumentParser();ap.add_argument('--config',default=str(ROOT/'scripts/evaluator_unit_tests/config.json'));ap.add_argument('--sample',action='append');ap.add_argument('--window',action='append', help='prepare only this registered window; refuses existing condition directories');ap.add_argument('--only-t6',action='store_true');ap.add_argument('--evaluate',nargs=4,metavar=('TEST','WINDOW','LEVEL','GPU'));ap.add_argument('--evaluate-retry',nargs=5,metavar=('TEST','WINDOW','LEVEL','GPU','DIR'));ap.add_argument('--evaluate-clean',metavar='GPU');ap.add_argument('--validate-t1-audio',nargs=2,metavar=('WINDOW','LEVEL'));ap.add_argument('--clean-repeat',nargs=2,metavar=('TAG','GPU'));a=ap.parse_args();cfg=json.loads(Path(a.config).read_text())
     if a.validate_t1_audio:
         if not a.sample or len(a.sample)!=1: raise ValueError('--validate-t1-audio needs exactly one --sample')
         validate_existing_t1_audio(a.sample[0],*a.validate_t1_audio,cfg); return
@@ -279,6 +279,11 @@ def main():
     if a.evaluate:
         if not a.sample or len(a.sample)!=1: raise ValueError('--evaluate needs exactly one --sample')
         evaluate(a.sample[0],*a.evaluate); return
+    if a.evaluate_retry:
+        if not a.sample or len(a.sample)!=1: raise ValueError('--evaluate-retry needs exactly one --sample')
+        *args, output_dir=a.evaluate_retry
+        if not output_dir.startswith('evaluators_posthoc_retry'): raise ValueError('retry output directory must be explicitly posthoc')
+        evaluate(a.sample[0],*args,output_dir=output_dir); return
     for s in (a.sample or cfg['samples']):prepare_sample(s,cfg,a.only_t6,a.window)
 
 if __name__=='__main__':main()

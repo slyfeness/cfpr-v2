@@ -59,3 +59,9 @@ docs/status/evaluator_unit_tests_20261108_media/CRB100_001/W1/T5__wrong.mp4
 docs/status/evaluator_unit_tests_20261108_media/CRB100_001/W1/T5__wrong.png
 docs/status/evaluator_unit_tests_20261108_media/CRB100_001/W1/T6__right_hand_gray.mp4
 docs/status/evaluator_unit_tests_20261108_media/CRB100_001/W1/T6__right_hand_gray.png
+docs/tasks/2026-11-09_evaluator_unit_tests_posthoc_diagnosis.md
+scripts/evaluator_unit_tests/audit_conditions.py
+scripts/evaluator_unit_tests/posthoc_diagnosis.py
+tests/test_evaluator_unit_audit.py
+docs/status/evaluator_unit_tests_posthoc_diagnosis_20261109.json
+docs/status/evaluator_unit_tests_posthoc_condition_audit_20261109_final.json

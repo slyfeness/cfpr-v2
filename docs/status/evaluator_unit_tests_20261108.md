@@ -215,3 +215,103 @@ v2.1 was committed before any other-seven T6 numeric output was opened, computed
 Under the original v2 T6 rule, only 2/7 unseen people pass both windows, so T6 v2 fails. Under registered v2.1, all 7/7 unseen people pass both windows, so T6 v2.1 passes. The two conclusions are reported in parallel.
 
 Private raw artifact root: `/data/lanyi/outputs/cfpr-v2/evaluator_unit_tests_20261108_v2/`; public JSON summary is `docs/status/evaluator_unit_tests_20261108_summary_v21_final.json`.
+
+## 漏项补跑与系统核查（事后）
+本节为看过全量结果后的事后诊断；不修改第二版或 v2.1 登记结论。
+核查：320 条条件中标准目录完整 319 条，retry 完整 1 条，缺失 0 条。
+CRB100_087/W1/T4 instant_ev_0.2 原队列脚本列出但静默未执行，目标目录从未创建；此前汇报只数现有 run_meta、未做笛卡尔积核查，故漏列。补跑后 T4b 从“补跑前 6/7（缺 1 条）”变为事后重算 7/7；这不改写原登记表。CRB100_001/W2 T3/skip 在独立 evaluators_posthoc_retry_v1 完成，且 skip 一直仅报告。
+
+## 事后诊断（看过结果后进行，仅供参考）
+
+### D1 事后：相对 clean 口型
+| 置信度阈值 | 其余 7 人两个窗口相对准确 |
+|---:|---:|
+| 2 | 3/7 |
+| 3 | 3/7 |
+| 4 | 3/7 |
+门槛 2/3/4 结论稳定为 3/7；SyncNet 置信度不再作为“必须下降”的判据。
+
+### D2 事后：口型基线来源
+| 样本 | mouth-audio lag | SyncNet 中位数 | 结论 |
+|---|---:|---:|---|
+| CRB100_001 | -5 | -1.0 | inconsistent_more_likely_syncnet_bias |
+| CRB100_002 | 2 | -3.0 | inconsistent_more_likely_syncnet_bias |
+| CRB100_025 | -4 | -4.0 | consistent_more_likely_data_offset |
+| CRB100_050 | 10 | 0.0 | inconsistent_more_likely_syncnet_bias |
+| CRB100_056 | -9 | 0.0 | inconsistent_more_likely_syncnet_bias |
+| CRB100_075 | 10 | -1.0 | inconsistent_more_likely_syncnet_bias |
+| CRB100_087 | 10 | -2.0 | inconsistent_more_likely_syncnet_bias |
+| CRB100_090 | -10 | -2.0 | inconsistent_more_likely_syncnet_bias |
+相关系数整体较低，D2 只能提示而不能确证偏移来源。
+
+### D3 事后：突跳扩展事件窗
+| 样本 | 窗口 | a±5 检出 | 窗口外新增 | a/a+30 手有效点 | 位移(肩宽) |
+|---|---|---|---:|---|---:|
+| CRB100_001 | W1 | True | 0 | 42/42 | 0.387 |
+| CRB100_001 | W2 | False | 0 | 42/42 | 0.026 |
+| CRB100_002 | W1 | True | 0 | 42/42 | 0.319 |
+| CRB100_002 | W2 | True | 0 | 42/41 | 0.281 |
+| CRB100_025 | W1 | True | 0 | 42/42 | 0.157 |
+| CRB100_025 | W2 | True | 0 | 42/42 | 0.055 |
+| CRB100_050 | W1 | True | 0 | 42/42 | 0.214 |
+| CRB100_050 | W2 | True | 0 | 42/42 | 0.220 |
+| CRB100_056 | W1 | True | 0 | 42/42 | 1.716 |
+| CRB100_056 | W2 | True | 0 | 42/42 | 0.688 |
+| CRB100_075 | W1 | False | 0 | 42/42 | 0.057 |
+| CRB100_075 | W2 | True | 0 | 42/42 | 0.150 |
+| CRB100_087 | W1 | True | 0 | 42/21 | 1.369 |
+| CRB100_087 | W2 | True | 0 | 24/42 | 1.180 |
+| CRB100_090 | W1 | True | 0 | 42/42 | 0.372 |
+| CRB100_090 | W2 | True | 0 | 42/42 | 0.077 |
+
+### D4 事后：硬切像素差
+| 样本 | 窗口 | a edit/clean | b edit/clean | clean p99 |
+|---|---|---:|---:|---:|
+| CRB100_001 | W1 | 8.06/0.75 | 6.56/0.87 | 5.51 |
+| CRB100_001 | W2 | 4.52/0.85 | 4.36/1.45 | 5.51 |
+| CRB100_002 | W1 | 21.82/7.16 | 23.02/8.41 | 13.33 |
+| CRB100_002 | W2 | 15.26/12.54 | 23.93/10.64 | 13.33 |
+| CRB100_025 | W1 | 12.82/0.55 | 13.85/1.61 | 4.01 |
+| CRB100_025 | W2 | 7.62/0.92 | 6.46/0.35 | 4.01 |
+| CRB100_050 | W1 | 7.27/2.23 | 8.73/2.07 | 3.16 |
+| CRB100_050 | W2 | 7.24/2.11 | 9.71/1.98 | 3.16 |
+| CRB100_056 | W1 | 8.41/2.47 | 13.46/4.40 | 6.97 |
+| CRB100_056 | W2 | 13.47/3.73 | 8.94/1.42 | 6.97 |
+| CRB100_075 | W1 | 5.82/1.10 | 5.63/0.45 | 5.00 |
+| CRB100_075 | W2 | 6.66/1.12 | 7.26/1.37 | 5.00 |
+| CRB100_087 | W1 | 18.99/8.52 | 21.37/3.22 | 14.62 |
+| CRB100_087 | W2 | 18.48/4.75 | 25.43/11.67 | 14.62 |
+| CRB100_090 | W1 | 23.69/1.49 | 9.89/0.99 | 5.60 |
+| CRB100_090 | W2 | 11.71/1.24 | 14.35/0.51 | 5.60 |
+
+### D5 事后：标签缺失与判错
+有效段合并 AUC（仅有效段）=0.834。
+| 样本 | 窗口 | 有效段 | 标签缺失 | correct≤wrong |
+|---|---|---:|---|---|
+| CRB100_001 | W1 | 4 | False | False |
+| CRB100_001 | W2 | 4 | False | False |
+| CRB100_002 | W1 | 4 | False | False |
+| CRB100_002 | W2 | 4 | False | True |
+| CRB100_025 | W1 | 4 | False | False |
+| CRB100_025 | W2 | 4 | False | False |
+| CRB100_050 | W1 | 4 | False | False |
+| CRB100_050 | W2 | 4 | False | False |
+| CRB100_056 | W1 | 0 | True | False |
+| CRB100_056 | W2 | 0 | True | False |
+| CRB100_075 | W1 | 4 | False | True |
+| CRB100_075 | W2 | 4 | False | False |
+| CRB100_087 | W1 | 1 | False | False |
+| CRB100_087 | W2 | 0 | True | False |
+| CRB100_090 | W1 | 4 | False | False |
+| CRB100_090 | W2 | 4 | False | False |
+
+## 评价器使用建议（事后）
+| 评价器 | 建议 | 条件 |
+|---|---|---|
+| Lip-sync | 有条件地用 | 相对 clean 变化量；clean 置信度<3 记 NaN；当前 D1 仅 3/7，不能作为单独硬门槛。 |
+| Identity | 可以直接用 | T2 7/7。 |
+| Pose freeze | 可以直接用 | T3 freeze 7/7。 |
+| Pose jump | 有条件地用 | 需结合 a±5、手可见性和位移；登记检出仅 3/7。 |
+| Temporal flicker | 有条件地用 | T4a/T4b 的事后诊断证据可供条件性使用；硬切需先量化两侧画面差。 |
+| Emotion | 有条件地用 | 仅有效标签段；标签缺失与判错分开。 |
+| Hand T6 | 有条件地用 | 同时报 v2/v2.1；交叠帧用几何排除。 |

@@ -200,7 +200,7 @@ def call(cmd, log, env=None, cpu=False):
 
 def evaluate(sample, test, window, level, gpu):
     cfg=json.loads((ROOT/'scripts/evaluator_unit_tests/config.json').read_text()); p=OUT/test/sample/window/level
-    clean=OUT/'clean'/sample/'clean.npy'; inp=INPUT/sample; out=p/'evaluators'; out.mkdir(parents=True,exist_ok=True)
+    clean=OUT/'clean'/sample/'clean.npy'; inp=INPUT/sample; out=p/'evaluators'; fresh_dir(out)
     frames=p/'frames.npy' if (p/'frames.npy').exists() else clean
     audio=p/'audio.wav' if (p/'audio.wav').exists() else inp/'audio.wav'
     target=p/'target.json' if (p/'target.json').exists() else OUT/'T5'/sample/window/'correct'/'target.json'
@@ -223,7 +223,7 @@ def evaluate(sample, test, window, level, gpu):
 def evaluate_clean(sample, gpu):
     cfg=json.loads((ROOT/'scripts/evaluator_unit_tests/config.json').read_text())
     p=OUT/'clean'/sample
-    clean=decode_once(sample,p/'clean.npy',cfg); inp=INPUT/sample; out=p/'evaluators'; out.mkdir(parents=True,exist_ok=True)
+    clean=decode_once(sample,p/'clean.npy',cfg); inp=INPUT/sample; out=p/'evaluators'; fresh_dir(out)
     target=OUT/'T5'/sample/'W1'/'correct'/'target.json'
     if not target.exists(): raise FileNotFoundError('prepare_sample must create the frozen T5 target before clean evaluation')
     e=ROOT/'scripts/evaluators'; acc='/data/lanyi/.conda/envs/cfpr-v2-acc/bin/python'; dh='/data/lanyi/.conda/envs/dh-eval-prm/bin/python'; sync='/data/lanyi/.conda/envs/syncnet/bin/python'; hand='/data/lanyi/.conda/envs/cfpr-wilor-evaluator/bin/python'
@@ -246,7 +246,7 @@ def evaluate_clean_repeat(sample, tag, gpu):
     p=OUT/'clean_repeats'/sample/tag
     if p.exists():
         raise FileExistsError(f'refusing to overwrite clean repeat output: {p}')
-    inp=INPUT/sample; clean=OUT/'clean'/sample/'clean.npy'; out=p/'evaluators'; out.mkdir(parents=True)
+    inp=INPUT/sample; clean=OUT/'clean'/sample/'clean.npy'; out=p/'evaluators'; fresh_dir(out)
     target=OUT/'T5'/sample/'W1'/'correct'/'target.json'
     if not clean.exists() or not target.exists():
         raise FileNotFoundError('clean baseline and its registered W1 emotion target must exist first')

@@ -163,4 +163,6 @@ directory raises `FileExistsError` instead of being reused or overwritten.
 This permits CRB100_001 W2 to be prepared without touching its completed W1
 artifacts. The protection is covered by the focused test
 `test_prepare_window_selection_and_fresh_directory_guard`; the full focused
-suite passed (25 tests).
+suite passed (25 tests).The same refusal guard now applies to every evaluator output directory (clean,
+condition, and determinism-repeat modes), so a retry cannot replace raw
+readings already written under an existing artifact path.

@@ -1,0 +1,25 @@
+# Never publish raw data, generated artifacts, credentials, or local environments.
+datasets/
+outputs/
+*.npy
+*.npz
+*.wav
+*.mp4
+*.avi
+*.mov
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+__pycache__/
+*.pyc
+.env
+auth.json
+id_rsa
+id_ed25519

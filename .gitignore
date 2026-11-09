@@ -12,6 +12,13 @@ outputs/
 *.jpeg
 *.gif
 *.webp
+!docs/
+!docs/status/
+!docs/status/evaluator_unit_tests_20261108_media/
+!docs/status/evaluator_unit_tests_20261108_media/**/*.mp4
+!docs/status/evaluator_unit_tests_20261108_media/**/*.png
+!docs/status/evaluator_unit_tests_20261108_figs/
+!docs/status/evaluator_unit_tests_20261108_figs/**/*.png
 *.pt
 *.pth
 *.ckpt

@@ -1,0 +1,27 @@
+{
+  "status": "pilot_stopped_pre_registered_gate_failed",
+  "pilot": {
+    "sample": "CRB100_001",
+    "window": "W1",
+    "tests": {
+      "T1_lipsync": "failed_exterior_offset_stability_0.8571_below_0.90",
+      "T2_identity": "passed_pilot_only",
+      "T3_pose": "failed_skip_and_jump",
+      "T4_temporal": "failed_flicker",
+      "T5_emotion": "passed_pilot_only",
+      "T6_hand": "failed_visibility_response"
+    }
+  },
+  "determinism": {
+    "npz_outputs_elementwise_equal": true,
+    "json_score_arrays_equal": true,
+    "json_timing_metadata_differs": true
+  },
+  "data_distribution": "none",
+  "media_distribution": "none",
+  "notes": [
+    "No threshold, reference, sample, or window was changed after observing results.",
+    "Emotion targets are Meta automatic labels, not human ground truth.",
+    "Raw evaluator outputs remain on the controlled b507 environment and are not included."
+  ]
+}

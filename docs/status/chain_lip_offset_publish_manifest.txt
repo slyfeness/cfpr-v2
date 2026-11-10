@@ -28,3 +28,8 @@ docs/status/chain_lip_offset_media/CRB100_087_W1_k_+4.mp4
 docs/status/chain_lip_offset_media/CRB100_087_W1_k_-8.mp4
 docs/status/chain_lip_offset_media/CRB100_090_W1_k_+4.mp4
 docs/status/chain_lip_offset_media/CRB100_090_W1_k_-8.mp4
+docs/tasks/2026-11-09_chain_lip_offset_report_completion.md
+scripts/chain_tests/report_completion.py
+tests/test_chain_lip_offset_report_completion.py
+docs/status/chain_lip_offset_media/impact_curves.png
+docs/status/chain_lip_offset_report_completion_20261109.json

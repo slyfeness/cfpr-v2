@@ -1,0 +1,18 @@
+# Public release manifest — chain-identity-drift
+# Reviewed: code, task specification, tests and aggregate report only.
+# Excluded: all /data outputs, source media, generated frames/videos, audio,
+# arrays (.npy/.npz), model weights, logs, local paths containing user data.
+
+docs/tasks/2026-11-09_step3_chain_identity_drift.md
+docs/status/chain_identity_drift.md
+scripts/chain_tests/identity_config.py
+scripts/chain_tests/identity_drift_config.json
+scripts/chain_tests/identity_edit.py
+scripts/chain_tests/prepare_identity_donors.py
+scripts/chain_tests/generate_identity_drift.py
+scripts/chain_tests/repair_identity_state_records.py
+scripts/chain_tests/evaluate_identity_drift.py
+scripts/chain_tests/analyze_identity_drift.py
+tests/test_chain_identity_edit.py
+tests/test_chain_identity_analysis.py
+tests/test_evaluate_identity_drift.py

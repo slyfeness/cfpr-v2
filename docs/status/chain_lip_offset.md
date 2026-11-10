@@ -1,0 +1,32 @@
+# Chain lip-offset（生成器内音频特征注入）
+
+## 开工依据
+
+口型评价器按登记判据未通过，事后诊断也未达到原定的 6/7 门槛；本任务是在负责人看过证据后决定开展。
+
+## 已登记矩阵与核验
+
+8 人 × 15 条 = 120 条生成结果与 120 条 SyncNet 读数均存在且可解析；每项为 250 个 25fps 帧、20 个半秒段。所有读数均使用相应样本的原始 `audio.wav`。
+
+| 检查 | 结果 |
+|---|---:|
+| G1 clean 重复确定性 | 8/8 |
+| G2 k=0 空动作 | 8/8 |
+| G3 精确修复 | 8/8 |
+| G4 | 详见 receipt；未达到整体 6/7 门槛 |
+| G5 | 详见 receipt |
+| G6 | 详见 receipt |
+
+`CRB100_002` 与 `CRB100_087` 按预登记规则保留；低 clean 置信度段为 NaN/无法判定，未填零。`CRB100_087/W2` 的负方向出现明显不一致，未作事后修正。
+
+## 影响与副作用
+
+像素平均绝对差曲线：`/data/lanyi/outputs/cfpr-v2/chain_lip_offset/run_20261109/analysis/impact_curves.png`；全矩阵最大帧级 RGB MAD 为 7.911/255。原始逐帧曲线和副作用输入输出均保留在同一输出根目录；身份/情绪、DWPose/pose、Temporal 已对 8 条 clean_a 与 96 条编辑项全部运行。
+
+## 可复核文件
+
+- `analysis/lipsync_receipt.json`：逐人、窗口、k 的固定 G4/G5/G6 结果。
+- `analysis/impact_and_summary.json`：逐帧影响曲线与汇总。
+- `state_record_plan.json`：初始计划；`state_record.json`：回填 SyncNet 实测后的状态记录。
+
+结论：生成器接口、确定性和局部音频特征注入链路已被直接验证；但按预登记的整体 G4 门槛，当前测量结果不足以宣称整条口型评价链通过。

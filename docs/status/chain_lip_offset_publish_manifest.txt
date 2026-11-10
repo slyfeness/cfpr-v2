@@ -1,0 +1,35 @@
+# Public whitelist: chain-lip-offset generator-side experiment.
+# Excluded: keys, raw datasets, .npy/.npz arrays, wav, weights/checkpoints, logs, latent arrays.
+docs/tasks/2026-11-08_step2_chain_lip_offset.md
+docs/status/chain_lip_offset.md
+scripts/chain_tests/__init__.py
+scripts/chain_tests/audio_edit.py
+scripts/chain_tests/config.json
+scripts/chain_tests/evaluate_lip_offset.py
+scripts/chain_tests/generate_lip_offset.py
+scripts/chain_tests/lip_offset_config.py
+scripts/chain_tests/analyze_lip_offset.py
+src/acc_core.py
+tests/test_chain_lip_offset_audio_edit.py
+tests/test_chain_lip_offset_evaluator.py
+docs/status/chain_lip_offset_media/CRB100_001_W1_k_+4.mp4
+docs/status/chain_lip_offset_media/CRB100_001_W1_k_-8.mp4
+docs/status/chain_lip_offset_media/CRB100_002_W1_k_+4.mp4
+docs/status/chain_lip_offset_media/CRB100_002_W1_k_-8.mp4
+docs/status/chain_lip_offset_media/CRB100_025_W1_k_+4.mp4
+docs/status/chain_lip_offset_media/CRB100_025_W1_k_-8.mp4
+docs/status/chain_lip_offset_media/CRB100_050_W1_k_+4.mp4
+docs/status/chain_lip_offset_media/CRB100_050_W1_k_-8.mp4
+docs/status/chain_lip_offset_media/CRB100_056_W1_k_+4.mp4
+docs/status/chain_lip_offset_media/CRB100_056_W1_k_-8.mp4
+docs/status/chain_lip_offset_media/CRB100_075_W1_k_+4.mp4
+docs/status/chain_lip_offset_media/CRB100_075_W1_k_-8.mp4
+docs/status/chain_lip_offset_media/CRB100_087_W1_k_+4.mp4
+docs/status/chain_lip_offset_media/CRB100_087_W1_k_-8.mp4
+docs/status/chain_lip_offset_media/CRB100_090_W1_k_+4.mp4
+docs/status/chain_lip_offset_media/CRB100_090_W1_k_-8.mp4
+docs/tasks/2026-11-09_chain_lip_offset_report_completion.md
+scripts/chain_tests/report_completion.py
+tests/test_chain_lip_offset_report_completion.py
+docs/status/chain_lip_offset_media/impact_curves.png
+docs/status/chain_lip_offset_report_completion_20261109.json

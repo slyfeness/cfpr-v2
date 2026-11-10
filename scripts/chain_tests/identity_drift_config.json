@@ -1,0 +1,11 @@
+{
+  "schema": "cfpr-chain-identity-drift-v1",
+  "frames": 240,
+  "seed": 3407,
+  "samples": ["CRB100_001", "CRB100_002", "CRB100_025", "CRB100_050", "CRB100_056", "CRB100_075", "CRB100_087", "CRB100_090"],
+  "donors": {"CRB100_001": "CRB100_002", "CRB100_002": "CRB100_025", "CRB100_025": "CRB100_050", "CRB100_050": "CRB100_056", "CRB100_056": "CRB100_075", "CRB100_075": "CRB100_087", "CRB100_087": "CRB100_090", "CRB100_090": "CRB100_001"},
+  "windows": {"W1": [96, 144], "W2": [168, 216]},
+  "alphas": [0.05, 0.1, 0.2, 0.4],
+  "face_box": {"landmark_confidence_min": 0.3, "padding_fraction": 0.25, "donor_alignment": "scale_translate_edge_replicate"},
+  "acceptance": {"inside_own_drop_min": 0.1, "outside_own_delta_abs_max": 0.02, "dose_reversal_allowance": 0.02, "minimum_valid_window_frames": 24}
+}

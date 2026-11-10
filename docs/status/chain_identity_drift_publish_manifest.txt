@@ -1,0 +1,46 @@
+# Public release manifest — chain-identity-drift
+# Reviewed: code, task specification, tests, aggregate report, plus the
+# 2026-11-10 owner-approved Step 3 public preview media below.
+# Excluded: all other /data outputs, source media, generated frames, audio,
+# arrays (.npy/.npz), model weights, logs, and local paths containing user data.
+
+docs/tasks/2026-11-09_step3_chain_identity_drift.md
+docs/status/chain_identity_drift.md
+scripts/chain_tests/identity_config.py
+scripts/chain_tests/identity_drift_config.json
+scripts/chain_tests/identity_edit.py
+scripts/chain_tests/prepare_identity_donors.py
+scripts/chain_tests/generate_identity_drift.py
+scripts/chain_tests/repair_identity_state_records.py
+scripts/chain_tests/evaluate_identity_drift.py
+scripts/chain_tests/analyze_identity_drift.py
+tests/test_chain_identity_edit.py
+tests/test_chain_identity_analysis.py
+tests/test_evaluate_identity_drift.py
+
+# Owner-approved public visual review material (16 W1 side-by-side previews
+# at alpha .20/.40 and 8 reference/donor alignment verification sheets).
+public_previews/chain_identity_drift/CRB100_001_W1_a_0.20_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_001_W1_a_0.40_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_002_W1_a_0.20_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_002_W1_a_0.40_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_025_W1_a_0.20_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_025_W1_a_0.40_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_050_W1_a_0.20_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_050_W1_a_0.40_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_056_W1_a_0.20_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_056_W1_a_0.40_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_075_W1_a_0.20_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_075_W1_a_0.40_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_087_W1_a_0.20_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_087_W1_a_0.40_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_090_W1_a_0.20_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_090_W1_a_0.40_vs_clean.mp4
+public_previews/chain_identity_drift/CRB100_001__alignment_check.png
+public_previews/chain_identity_drift/CRB100_002__alignment_check.png
+public_previews/chain_identity_drift/CRB100_025__alignment_check.png
+public_previews/chain_identity_drift/CRB100_050__alignment_check.png
+public_previews/chain_identity_drift/CRB100_056__alignment_check.png
+public_previews/chain_identity_drift/CRB100_075__alignment_check.png
+public_previews/chain_identity_drift/CRB100_087__alignment_check.png
+public_previews/chain_identity_drift/CRB100_090__alignment_check.png

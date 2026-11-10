@@ -1,8 +1,10 @@
 # Public release manifest — identity-injection-pilot
-# Reviewed: task, source, tests, report, 2 detector-crop contact sheets,
-# P7 reference images, and owner-approved 10 side-by-side previews only.
+# Reviewed: first- and second-round task cards, source, tests, report,
+# detector-crop contact sheets, approved references, and owner-approved
+# side-by-side previews only.
 # Excluded: arrays, raw frames, source media, audio, weights, logs, and b507 paths.
 docs/tasks/2026-11-10_identity_injection_pilot.md
+docs/tasks/2026-11-10_identity_injection_pilot_round2.md
 docs/status/identity_injection_pilot.md
 docs/status/identity_injection_pilot_publish_manifest.txt
 scripts/chain_tests/identity_pilot.py
@@ -11,9 +13,16 @@ scripts/chain_tests/analyze_identity_pilot.py
 scripts/chain_tests/identity_pilot_measurements.py
 scripts/chain_tests/render_identity_pilot.py
 scripts/chain_tests/build_identity_pilot_previews.sh
+scripts/chain_tests/identity_pilot_round2.py
+scripts/chain_tests/generate_identity_pilot_round2.py
+scripts/chain_tests/identity_pilot_v2_metrics.py
+scripts/chain_tests/identity_pilot_round2_analysis.py
+scripts/chain_tests/build_identity_pilot_round2_previews.sh
 tests/test_identity_pilot.py
 tests/test_identity_pilot_analysis.py
 tests/test_identity_pilot_measurements.py
+tests/test_identity_pilot_round2.py
+tests/test_identity_pilot_v2_metrics.py
 public_previews/identity_injection_pilot/CRB100_001_pilot_faces.png
 public_previews/identity_injection_pilot/CRB100_025_pilot_faces.png
 public_previews/identity_injection_pilot/CRB100_001_P7_reference.png
@@ -28,3 +37,14 @@ public_previews/identity_injection_pilot/CRB100_025_P1_vs_clean.mp4
 public_previews/identity_injection_pilot/CRB100_025_P4_vs_clean.mp4
 public_previews/identity_injection_pilot/CRB100_025_P5_vs_clean.mp4
 public_previews/identity_injection_pilot/CRB100_025_P7_vs_clean.mp4
+public_previews/identity_injection_pilot/round2/CRB100_001_round2_faces.png
+public_previews/identity_injection_pilot/round2/CRB100_025_round2_faces.png
+public_previews/identity_injection_pilot/round2/CRB100_001_H50_box_check.png
+public_previews/identity_injection_pilot/round2/CRB100_025_H50_box_check.png
+public_previews/identity_injection_pilot/round2/dose_curves.png
+public_previews/identity_injection_pilot/round2/CRB100_001_P1b_vs_clean.mp4
+public_previews/identity_injection_pilot/round2/CRB100_001_D75_vs_clean.mp4
+public_previews/identity_injection_pilot/round2/CRB100_001_H50_vs_clean.mp4
+public_previews/identity_injection_pilot/round2/CRB100_025_P1b_vs_clean.mp4
+public_previews/identity_injection_pilot/round2/CRB100_025_D75_vs_clean.mp4
+public_previews/identity_injection_pilot/round2/CRB100_025_H50_vs_clean.mp4
